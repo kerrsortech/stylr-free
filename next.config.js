@@ -1,19 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/product-analyser',
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
-  },
-  async redirects() {
-    return [
-      {
-        source: '/',
-        destination: '/product-analyser',
-        permanent: false,
-      },
-    ];
   },
   async headers() {
     return [
