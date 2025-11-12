@@ -349,51 +349,59 @@ function generateRecommendations(
   const priority: Array<{ type: string; message: string; impact: string }> = [];
   const quickWins: string[] = [];
 
-  // Critical SEO issues
-  const criticalIssues = seoAnalysis.checks.filter(
-    (c: any) => c.priority === 'critical' && c.status !== 'pass'
+  // Critical SEO issues - with null safety
+  const seoChecks = seoAnalysis?.checks || [];
+  const criticalIssues = seoChecks.filter(
+    (c: any) => c?.priority === 'critical' && c?.status !== 'pass'
   );
   criticalIssues.forEach((issue: any) => {
     priority.push({
       type: 'critical',
-      message: issue.message,
+      message: issue?.message || 'Critical SEO issue detected',
       impact: '+15 SEO points',
     });
   });
 
-  // High priority issues
-  const highIssues = seoAnalysis.checks.filter(
-    (c: any) => c.priority === 'high' && c.status !== 'pass'
+  // High priority issues - with null safety
+  const highIssues = seoChecks.filter(
+    (c: any) => c?.priority === 'high' && c?.status !== 'pass'
   );
   highIssues.forEach((issue: any) => {
     priority.push({
       type: 'high',
-      message: issue.message,
+      message: issue?.message || 'High priority SEO issue detected',
       impact: '+8 SEO points',
     });
   });
 
-  // Performance issues
-  if (performanceMetrics.images.unoptimizedCount > 0) {
+  // Performance issues - with null safety
+  const images = performanceMetrics?.images;
+  if (images && images.unoptimizedCount > 0) {
     priority.push({
       type: 'high',
-      message: `Optimize ${performanceMetrics.images.unoptimizedCount} images (reduce ${(performanceMetrics.images.totalSize / 1024 / 1024).toFixed(1)}MB → ~400KB)`,
+      message: `Optimize ${images.unoptimizedCount} images (reduce ${((images.totalSize || 0) / 1024 / 1024).toFixed(1)}MB → ~400KB)`,
       impact: '+10 Performance points',
     });
   }
 
-  // Quick wins
-  if (contentEnhancement.title.enhanced !== contentEnhancement.title.current) {
+  // Quick wins - with null safety
+  const title = contentEnhancement?.title;
+  if (title && title.enhanced && title.current && title.enhanced !== title.current) {
     quickWins.push('Copy enhanced title (30 seconds)');
   }
-  if (contentEnhancement.features.enhanced.length > contentEnhancement.features.current.length) {
-    quickWins.push(`Add ${contentEnhancement.features.enhanced.length - contentEnhancement.features.current.length} bullet points from suggestions (2 minutes)`);
+  
+  const features = contentEnhancement?.features;
+  if (features && features.enhanced && Array.isArray(features.enhanced) && 
+      features.current && Array.isArray(features.current) &&
+      features.enhanced.length > features.current.length) {
+    quickWins.push(`Add ${features.enhanced.length - features.current.length} bullet points from suggestions (2 minutes)`);
   }
-  if (seoAnalysis.checks.some((c: any) => c.name === 'Image Alt Texts' && c.status !== 'pass')) {
+  
+  if (seoChecks.some((c: any) => c?.name === 'Image Alt Texts' && c?.status !== 'pass')) {
     quickWins.push('Update alt texts on images (5 minutes)');
   }
 
-  const scoreImprovement = potentialScore - overallScore.total;
+  const scoreImprovement = potentialScore - (overallScore?.total || 50);
   const trafficImprovement = scoreImprovement > 20 ? '35-50%' : scoreImprovement > 10 ? '20-35%' : '10-20%';
   const implementationTime = priority.length > 5 ? '~60 minutes' : priority.length > 2 ? '~45 minutes' : '~30 minutes';
 
