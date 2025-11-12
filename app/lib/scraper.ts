@@ -1,4 +1,3 @@
-import { extractProductDataWithLLM } from './replicate';
 import { scrapeTechnicalSEO, TechnicalSEOData } from './html-scraper';
 import { logError } from './error-handler';
 
@@ -25,45 +24,35 @@ export interface ScrapedProductData {
 }
 
 /**
- * Extract product data using a hybrid approach:
- * 1. HTML scraping for technical SEO elements (meta tags, H1, images, schema, etc.)
- * 2. AI for content understanding and product-specific data
+ * Extract product data using HTML scraping for technical SEO elements
+ * (meta tags, H1, images, schema, etc.)
  */
 export async function scrapeProductPage(url: string): Promise<ScrapedProductData> {
   try {
-    // Step 1: Scrape HTML for technical SEO elements (reliable, fast)
+    // Scrape HTML for technical SEO elements (reliable, fast)
     const technicalSEO = await scrapeTechnicalSEO(url);
     
-    // Step 2: Use AI for content understanding and product-specific extraction
-    const extractedData = await extractProductDataWithLLM(url, technicalSEO);
-    
-    // Merge technical SEO data with AI extracted data
-    // Technical SEO (HTML scraping) is more reliable for meta tags, H1, images, schema
-    // AI is better for content understanding (product description, features, context)
-    
-    // Validate and merge data with proper fallbacks
+    // Build data structure from technical SEO data only
     const mergedData = {
-      // Technical SEO takes priority (more reliable for HTML elements)
-      metaTitle: technicalSEO.metaTitle || extractedData.title || '',
-      metaDescription: technicalSEO.metaDescription || extractedData.metaDescription || '',
-      h1: technicalSEO.h1 || extractedData.h1 || extractedData.title || '',
+      // Technical SEO data (HTML scraping)
+      metaTitle: technicalSEO.metaTitle || '',
+      metaDescription: technicalSEO.metaDescription || '',
+      h1: technicalSEO.h1 || '',
       h1Count: technicalSEO.h1Count || 0,
-      images: technicalSEO.images.length > 0 ? technicalSEO.images : (Array.isArray(extractedData.images) ? extractedData.images : []),
-      schema: technicalSEO.schema || extractedData.schema || null,
+      images: technicalSEO.images || [],
+      schema: technicalSEO.schema || null,
       
-      // AI data for content understanding (more reliable for semantic content)
-      title: extractedData.title || technicalSEO.h1 || '',
-      description: (extractedData.description || '').trim(),
-      features: Array.isArray(extractedData.features) && extractedData.features.length > 0 
-        ? extractedData.features.filter((f: string) => f && f.trim().length > 0)
-        : [],
-      price: (extractedData.price || '').trim(),
-      productType: (extractedData.productType || 'Product').trim(),
-      category: (extractedData.category || '').trim(),
-      ctaText: (extractedData.ctaText || 'Add to Cart').trim(),
-      brand: (extractedData.brand || '').trim(),
-      sku: (extractedData.sku || '').trim(),
-      availability: (extractedData.availability || 'In Stock').trim(),
+      // Use technical SEO data for basic fields
+      title: technicalSEO.h1 || technicalSEO.metaTitle || 'Product',
+      description: technicalSEO.metaDescription || '',
+      features: [],
+      price: '',
+      productType: 'Product',
+      category: '',
+      ctaText: 'Add to Cart',
+      brand: '',
+      sku: '',
+      availability: 'In Stock',
       
       url,
       technicalSEO, // Include full technical SEO data for reference
@@ -77,7 +66,6 @@ export async function scrapeProductPage(url: string): Promise<ScrapedProductData
         hasTitle: !!mergedData.title,
         hasMetaTitle: !!mergedData.metaTitle,
         hasFeatures: mergedData.features.length > 0,
-        extractedDataKeys: Object.keys(extractedData)
       });
       // Use meta description as fallback if available
       if (mergedData.metaDescription && mergedData.metaDescription.length > 0) {
