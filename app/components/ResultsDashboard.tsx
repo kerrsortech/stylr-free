@@ -67,13 +67,12 @@ export function ResultsDashboard({ data, onBack }: ResultsDashboardProps) {
         <div className="py-8 px-4">
           <div className="max-w-6xl mx-auto">
             {/* Page Header */}
-            <div className="mb-6 flex items-center justify-between">
-              <Button variant="ghost" onClick={onBack}>
+            <div className="mb-6 relative flex items-center">
+              <Button variant="ghost" onClick={onBack} className="absolute left-0">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Analyzer
               </Button>
-              <h1 className="text-2xl font-bold">Product Page Analysis Results</h1>
-              <div></div>
+              <h1 className="text-2xl font-bold text-center flex-1">Product Page Analysis Results</h1>
             </div>
 
             {/* Dashboard content */}
