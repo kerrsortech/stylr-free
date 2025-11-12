@@ -471,15 +471,17 @@ ENHANCEMENT APPROACH:
 
 For EVERY enhancement, provide ONLY:
 - Enhanced content: Optimized version ready for production use
-- Reasoning: Clear, humane, and easy-to-understand explanation written in simple language for non-technical users. Explain WHY this works in an intuitive, conversational way that anyone can understand. Avoid technical jargon - use everyday language and relatable examples. Make it feel like friendly advice, not a technical manual.
+- Reasoning: A descriptive explanation (4-6 sentences) that combines:
+  1. Simple, humane explanation (2-3 sentences): Write in easy-to-understand, conversational language that anyone can grasp. Explain WHY this works in intuitive terms, using relatable examples. Make it feel like friendly advice.
+  2. Technical SEO explanation (1-2 sentences): Include technical details about how this improves SEO - mention specific SEO factors like keyword optimization, search intent alignment, semantic relevance, keyword placement, search engine algorithms, ranking signals, or other relevant SEO parameters. Explain the technical SEO impact in clear terms.
 - Improvement: Quantified impact (e.g., "+35% CTR potential", "+28% keyword coverage")
 
 CRITICAL REASONING REQUIREMENTS:
-- Write reasoning as if explaining to a friend who isn't technical
-- Use simple, conversational language - no SEO jargon or technical terms
-- Focus on the "why" in a way that makes sense intuitively
-- Make it relatable and easy to understand
-- Explain benefits in terms users can relate to (more customers, better visibility, etc.)
+- Write in a balanced way: Start with simple, conversational explanation, then add technical SEO details
+- Make the simple part relatable and easy to understand (more customers, better visibility, etc.)
+- Include technical SEO aspects: keyword optimization, search intent, semantic relevance, ranking signals, search algorithms
+- Be descriptive (4-6 sentences total) - not too short, but comprehensive
+- Explain both the "why it works" (simple) and "how it helps SEO" (technical)
 
 IMPORTANT: Do NOT return "current" content - we already have it from the page. Only return enhanced, reasoning, and improvement.`;
 
@@ -503,19 +505,19 @@ CRITICAL: You MUST visit and analyze the COMPLETE, FULL page at the URL above.
 Analyze the COMPLETE URL and provide enhancements:
 
 1. summary: overallAssessment (2-3 sentences), strengths (3-5), weaknesses (3-5), priorityRecommendations (3-5)
-2. title: enhanced (50-60 chars, keyword-rich), reasoning (2-3 sentences in simple, humane language - explain why this works in easy-to-understand terms for non-technical users), improvement (quantified impact)
-3. metaDescription: enhanced (150-160 chars, CTA+benefits), reasoning (2-3 sentences in simple, humane language - explain why this works in easy-to-understand terms for non-technical users), improvement (quantified)
-4. description: enhanced (200-300 words, benefit-focused, SEO-optimized), reasoning (3-4 sentences in simple, humane language - explain why this works in easy-to-understand terms for non-technical users), improvement (quantified)
-5. features: enhanced (5-7 items, benefit-focused, trust signals), reasoning (2-3 sentences in simple, humane language - explain why this works in easy-to-understand terms for non-technical users), improvement (quantified)
+2. title: enhanced (50-60 chars, keyword-rich), reasoning (4-6 sentences: 2-3 simple explanations + 1-2 technical SEO details), improvement (quantified impact)
+3. metaDescription: enhanced (150-160 chars, CTA+benefits), reasoning (4-6 sentences: 2-3 simple explanations + 1-2 technical SEO details), improvement (quantified)
+4. description: enhanced (200-300 words, benefit-focused, SEO-optimized), reasoning (5-7 sentences: 3-4 simple explanations + 1-2 technical SEO details), improvement (quantified)
+5. features: enhanced (5-7 items, benefit-focused, trust signals), reasoning (4-6 sentences: 2-3 simple explanations + 1-2 technical SEO details), improvement (quantified)
 6. contentQualityScore: 0-100 (SEO, conversion, UX, completeness, trust)
 
 REASONING WRITING STYLE - CRITICAL:
-- Write all reasoning sections in a warm, conversational, and easy-to-understand way
-- Avoid technical terms like "CTR", "keyword density", "meta tags" - explain concepts simply
-- Use everyday language and relatable examples
-- Make it feel like helpful advice from a friend, not a technical manual
-- Focus on what the user will gain (more customers, better visibility, easier to find)
-- Explain the "why" in intuitive terms that make immediate sense
+- Write descriptive reasoning (4-6 sentences for most sections, 5-7 for description)
+- Structure: Start with simple, conversational explanation (2-3 sentences), then add technical SEO details (1-2 sentences)
+- Simple part: Use warm, easy-to-understand language, relatable examples, explain benefits in terms users understand (more customers, better visibility, easier to find)
+- Technical part: Include specific SEO factors - keyword optimization, search intent alignment, semantic relevance, keyword placement, ranking signals, search algorithms, keyword density, meta tag optimization, or other relevant SEO parameters
+- Balance both aspects: Make it accessible but also show the technical SEO value
+- Be descriptive and comprehensive - explain both "why it works" (simple) and "how it improves SEO" (technical)
 
 Principles: SEO (keywords, search intent, rich results), Conversion (benefits>features, trust signals, urgency), UX (scannable, clear, accessible).
 
@@ -530,22 +532,22 @@ Return ONLY valid JSON, no markdown, no "current" fields (we have them), no trai
   },
   "title": {
     "enhanced": "Optimized title (50-60 chars)",
-    "reasoning": "Simple, conversational explanation",
+    "reasoning": "Descriptive explanation with simple and technical SEO details",
     "improvement": "+X% keyword coverage, +Y% CTR potential"
   },
   "metaDescription": {
     "enhanced": "Optimized meta description (150-160 chars)",
-    "reasoning": "Simple, conversational explanation",
+    "reasoning": "Descriptive explanation with simple and technical SEO details",
     "improvement": "+X% CTR from search results"
   },
   "description": {
     "enhanced": "Rewritten optimized description (200-300 words with subheadings)",
-    "reasoning": "Simple, conversational explanation",
+    "reasoning": "Descriptive explanation with simple and technical SEO details",
     "improvement": "+X% engagement, +Y% conversion, +Z% SEO value"
   },
   "features": {
     "enhanced": ["Enhanced feature 1 with benefit", "Enhanced feature 2 with trust signal", "New feature 3"],
-    "reasoning": "Simple, conversational explanation",
+    "reasoning": "Descriptive explanation with simple and technical SEO details",
     "improvement": "+X% conversion rate, +Y% trust signals"
   },
   "contentQualityScore": 85
