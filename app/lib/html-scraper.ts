@@ -11,7 +11,7 @@ import { logError } from './error-handler';
  * - File size indicators in URL
  */
 function isLikelyProductImage(
-  $img: cheerio.Cheerio<cheerio.Element>,
+  $img: any,
   src: string,
   width: number,
   height: number,

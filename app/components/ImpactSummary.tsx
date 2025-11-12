@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ArrowRight, Download } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface ImpactSummaryProps {
   currentScore: number;
@@ -108,10 +108,6 @@ export function ImpactSummary({
         <Button variant="outline" className="flex-1" onClick={onAnalyzeAnother}>
           <ArrowRight className="mr-2 h-4 w-4" />
           Analyze Another Product
-        </Button>
-        <Button variant="default" className="flex-1">
-          <Download className="mr-2 h-4 w-4" />
-          Download Full Report PDF
         </Button>
       </div>
     </div>

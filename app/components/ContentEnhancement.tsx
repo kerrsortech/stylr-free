@@ -47,7 +47,19 @@ export function ContentEnhancement({ enhancement }: ContentEnhancementProps) {
 
   const copyToClipboard = async (text: string, type: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      // Ensure we're copying the enhanced content - format appropriately
+      let contentToCopy = text.trim();
+      
+      // For features, format as bullet points for better readability
+      if (type === 'features') {
+        const features = enhancement.features.enhanced;
+        contentToCopy = features
+          .map(feature => `• ${feature.trim()}`)
+          .join('\n');
+      }
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(contentToCopy);
       setCopied(type);
       setTimeout(() => setCopied(null), 2000);
     } catch (err) {
@@ -158,7 +170,7 @@ export function ContentEnhancement({ enhancement }: ContentEnhancementProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => copyToClipboard(enhancement.features.enhanced.join('\n'), 'features')}
+              onClick={() => copyToClipboard('', 'features')}
             >
               {copied === 'features' ? (
                 <>

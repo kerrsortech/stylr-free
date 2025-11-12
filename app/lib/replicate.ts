@@ -128,6 +128,7 @@ async function callReplicatePredictionAPI(
   };
 
   // Create prediction
+  // Initial prediction creation - allow 60 seconds timeout for initial request
   const createResponse = await fetchWithTimeout(
     'https://api.replicate.com/v1/predictions',
     {
@@ -138,7 +139,7 @@ async function callReplicatePredictionAPI(
       },
       body: JSON.stringify(requestBody),
     },
-    30000
+    60000 // 60 seconds for initial prediction creation
   );
 
   if (!createResponse.ok) {
@@ -158,7 +159,7 @@ async function callReplicatePredictionAPI(
   // Poll for result (Replicate predictions are async)
   let result: any = null;
   let attempts = 0;
-  const maxAttempts = 120; // 2 minutes max (1 second per attempt)
+  const maxAttempts = 300; // 5 minutes max (1 second per attempt, allows 4+ minutes for processing)
 
   while (!result && attempts < maxAttempts) {
     await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
@@ -171,7 +172,7 @@ async function callReplicatePredictionAPI(
           'Authorization': `Token ${apiToken}`,
         },
       },
-      10000
+      15000 // 15 second timeout for each status check
     );
 
     if (!statusResponse.ok) {
@@ -190,10 +191,15 @@ async function callReplicatePredictionAPI(
     }
 
     attempts++;
+    
+    // Log progress every 30 seconds for long-running requests
+    if (attempts % 30 === 0) {
+      console.log(`[Replicate] Polling prediction ${predictionId}: ${attempts}s elapsed, status: ${statusData.status}`);
+    }
   }
 
   if (!result) {
-    throw new Error('Prediction timed out after 2 minutes');
+    throw new Error('Prediction timed out after 5 minutes');
   }
 
   // Extract text from result (returns array of strings/tokens)
@@ -212,7 +218,7 @@ async function callReplicatePredictionAPI(
     } else if (result.output) {
       // Handle nested output
       if (Array.isArray(result.output)) {
-        return result.output.map(item => typeof item === 'string' ? item : String(item)).join('');
+        return result.output.map((item: any) => typeof item === 'string' ? item : String(item)).join('');
       }
       return typeof result.output === 'string' ? result.output : JSON.stringify(result.output);
     } else {

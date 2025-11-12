@@ -1,7 +1,7 @@
 /**
  * Centralized error handling for production
  * Sanitizes all errors to hide third-party API details
- * All errors are branded as "Averon AI" services
+ * All errors are branded as "Stylr AI" services
  */
 
 export interface SanitizedError {
@@ -22,15 +22,15 @@ export function sanitizeError(error: any, context?: string): SanitizedError {
   // Map of third-party API patterns to generic messages
   const sanitizationMap: Array<{ pattern: RegExp; replacement: string }> = [
     // Replicate/GPT-5 references
-    { pattern: /replicate|gpt-?5|openai|gpt-?4/gi, replacement: 'Averon AI' },
-    { pattern: /replicate api|replicate\.com/gi, replacement: 'Averon AI service' },
+    { pattern: /replicate|gpt-?5|openai|gpt-?4/gi, replacement: 'Stylr AI' },
+    { pattern: /replicate api|replicate\.com/gi, replacement: 'Stylr AI service' },
     { pattern: /prediction (failed|error|timeout)/gi, replacement: 'analysis processing' },
     { pattern: /model version|model hash/gi, replacement: 'service configuration' },
     { pattern: /api token|replicate.*token/gi, replacement: 'service authentication' },
     
     // PageSpeed references
     { pattern: /pagespeed|google.*pagespeed|lighthouse/gi, replacement: 'performance analysis' },
-    { pattern: /pagespeed.*api|pagespeedonline/gi, replacement: 'Averon performance service' },
+    { pattern: /pagespeed.*api|pagespeedonline/gi, replacement: 'Stylr AI performance service' },
     
     // Generic API errors
     { pattern: /api.*error|api.*failed|api.*timeout/gi, replacement: 'service error' },
@@ -77,7 +77,7 @@ export function sanitizeError(error: any, context?: string): SanitizedError {
     userFriendly = 'An internal error occurred. Our team has been notified. Please try again in a few moments.';
   } else {
     // Generic fallback - make it sound like it's our service
-    userFriendly = sanitizedMessage || 'An unexpected error occurred with Averon AI analysis. Please try again.';
+    userFriendly = sanitizedMessage || 'An unexpected error occurred with Stylr AI analysis. Please try again.';
   }
 
   // Determine error code
@@ -120,7 +120,7 @@ export function logError(error: any, context?: string, additionalData?: Record<s
   // Use console.error for server-side logging (will be captured by logging service)
   // Log in a format that's easy to read in server logs
   console.error('='.repeat(80));
-  console.error('[Averon AI Error]', JSON.stringify(logData, null, 2));
+  console.error('[Stylr AI Error]', JSON.stringify(logData, null, 2));
   console.error('='.repeat(80));
   
   // Also log a more readable format for quick debugging

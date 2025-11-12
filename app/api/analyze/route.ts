@@ -7,11 +7,13 @@ import { enhanceContentWithLLM } from '@/app/lib/replicate';
 import { calculateOverallScore, estimatePotentialScore } from '@/app/lib/scoring';
 import { createErrorResponse, logError } from '@/app/lib/error-handler';
 
-export const maxDuration = 60; // 60 seconds for Vercel
+export const maxDuration = 300; // 5 minutes for Vercel (allows 4+ minutes for AI processing)
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[API] Analyze request received');
     const { url } = await request.json();
+    console.log('[API] URL:', url);
 
     // 1. Validate URL
     if (!url || typeof url !== 'string') {
@@ -31,7 +33,9 @@ export async function POST(request: NextRequest) {
     // 2. Extract product data using LLM
     let scrapedData;
     try {
+      console.log('[API] Starting product extraction...');
       scrapedData = await scrapeProductPage(url);
+      console.log('[API] Product extraction completed');
     } catch (error: any) {
       // Log error with full context before sanitizing
       logError(error, 'product_extraction', { url });
@@ -43,10 +47,12 @@ export async function POST(request: NextRequest) {
     // No fallbacks - if any analysis fails, the entire request fails
     let seoAnalysis, performanceMetrics;
     try {
+      console.log('[API] Starting parallel analysis (SEO + Performance)...');
       [seoAnalysis, performanceMetrics] = await Promise.all([
         analyzeSEO(scrapedData),
         fetchPerformanceMetrics(url),
       ]);
+      console.log('[API] Parallel analysis completed');
     } catch (error: any) {
       // Log error with full context before sanitizing
       logError(error, 'parallel_analysis', { 
@@ -62,6 +68,7 @@ export async function POST(request: NextRequest) {
     // No fallback - if enhancement fails, the entire request fails
     let contentEnhancement;
     try {
+      console.log('[API] Starting content enhancement with LLM...');
       contentEnhancement = await enhanceContentWithLLM({
         title: scrapedData.title,
         description: scrapedData.description,
@@ -74,8 +81,10 @@ export async function POST(request: NextRequest) {
         ctaText: scrapedData.ctaText || 'Add to Cart',
         images: scrapedData.images,
       }, url, scrapedData.technicalSEO);
+      console.log('[API] Content enhancement completed');
     } catch (error: any) {
       // Log error with full context before sanitizing
+      console.error('[API] Content enhancement failed:', error.message);
       logError(error, 'content_enhancement', { 
         url,
         hasScrapedData: !!scrapedData,
@@ -156,6 +165,8 @@ export async function POST(request: NextRequest) {
     // Log error with full context before sanitizing
     logError(error, 'analysis_pipeline', { 
       errorType: error?.constructor?.name,
+      errorMessage: error?.message,
+      errorStack: error?.stack?.substring(0, 500),
       hasUrl: !!request?.body
     });
     const errorResponse = createErrorResponse(error, 'analysis_pipeline');
