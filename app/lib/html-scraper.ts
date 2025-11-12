@@ -144,18 +144,42 @@ export interface TechnicalSEOData {
  */
 export async function scrapeTechnicalSEO(url: string): Promise<TechnicalSEOData> {
   try {
+    // Log full URL to confirm it's not truncated
+    console.log('[HTML Scraper] Fetching FULL page HTML from URL (length:', url.length, 'chars)');
+    console.log('[HTML Scraper] Full URL:', url);
+    
     const response = await fetchWithTimeout(url, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
       },
-    }, 30000);
+    }, 30000); // 30 second timeout for HTML fetch
 
     if (!response.ok) {
       throw new Error(`Failed to fetch HTML: ${response.status} ${response.statusText}`);
     }
 
     const html = await response.text();
-    const $ = cheerio.load(html);
+    console.log('[HTML Scraper] ✅ HTML fetched successfully, length:', html.length, 'chars');
+    console.log('[HTML Scraper] ✅ Full page HTML loaded - analyzing complete page structure');
+    
+    // Load full HTML into cheerio - no truncation, complete page analysis
+    const $ = cheerio.load(html, {
+      decodeEntities: true,
+      lowerCaseAttributeNames: false,
+    });
+    
+    // Verify we have substantial content
+    const bodyText = $('body').text().trim();
+    console.log('[HTML Scraper] Body text length:', bodyText.length, 'chars');
+    if (bodyText.length < 100) {
+      console.warn('[HTML Scraper] ⚠️ Page body text is very short - may be a dynamic/SPA page');
+    }
 
     // Extract meta title
     const metaTitle = $('title').first().text().trim() || '';
@@ -169,8 +193,8 @@ export async function scrapeTechnicalSEO(url: string): Promise<TechnicalSEOData>
     const h1 = h1Tags[0] || '';
     const h1Count = h1Tags.length;
 
-    // Extract H2 tags
-    const h2Tags = $('h2').map((_, el) => $(el).text().trim()).get().slice(0, 10); // Limit to first 10
+    // Extract H2 tags (get all, but limit to first 20 for analysis - still comprehensive)
+    const h2Tags = $('h2').map((_, el) => $(el).text().trim()).get().slice(0, 20);
 
     // Extract images with alt text - focus on product images
     // Filter out icons, logos, decorative images, and small images

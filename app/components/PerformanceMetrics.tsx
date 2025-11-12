@@ -66,7 +66,7 @@ export function PerformanceMetrics({ metrics }: PerformanceMetricsProps) {
         <CardTitle>Performance Metrics</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div className="p-4 border rounded-lg">
             <div className="text-sm text-gray-600 mb-1">Desktop</div>
             <div className="flex items-center gap-2 mb-2">
@@ -83,15 +83,6 @@ export function PerformanceMetrics({ metrics }: PerformanceMetricsProps) {
               <span className="text-gray-500">/100</span>
             </div>
             {getScoreBadge(metrics.mobile.score)}
-          </div>
-
-          <div className="p-4 border rounded-lg">
-            <div className="text-sm text-gray-600 mb-1">SEO Score</div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl font-bold">{metrics.seo.score}</span>
-              <span className="text-gray-500">/100</span>
-            </div>
-            {getScoreBadge(metrics.seo.score)}
           </div>
 
           <div className="p-4 border rounded-lg">

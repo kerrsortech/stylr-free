@@ -17,11 +17,11 @@ export function SEOHealthReport({ checks }: SEOHealthReportProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pass':
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case 'warning':
-        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
       case 'fail':
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="h-5 w-5 text-red-500" />;
       default:
         return null;
     }

@@ -9,6 +9,9 @@
 function repairJSON(jsonString: string): string {
   let repaired = jsonString;
 
+  // CRITICAL: Fix double colons (::) - GPT-5 sometimes outputs "key":: instead of "key":
+  repaired = repaired.replace(/::/g, ':');
+  
   // Remove trailing commas before closing brackets/braces (most common issue)
   repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
   
@@ -32,10 +35,11 @@ function repairJSON(jsonString: string): string {
  * Extract JSON from text that might contain extra content
  */
 function extractJSON(text: string): string {
-  // Log the input for debugging
-  console.log('[JSON Extract] Input text length:', text.length);
-  console.log('[JSON Extract] First 200 chars:', text.substring(0, 200));
-  console.log('[JSON Extract] Last 200 chars:', text.substring(Math.max(0, text.length - 200)));
+  // Log the input for debugging (NOTE: This is the GPT-5 JSON response, NOT the URL)
+  // The URL is passed in full to GPT-5 - this logging is just for debugging the JSON response
+  console.log('[JSON Extract] GPT-5 JSON response length:', text.length, 'chars');
+  console.log('[JSON Extract] First 200 chars of JSON (for debugging):', text.substring(0, 200));
+  console.log('[JSON Extract] Last 200 chars of JSON (for debugging):', text.substring(Math.max(0, text.length - 200)));
   
   // First, try to find the JSON object
   const firstBrace = text.indexOf('{');
@@ -141,7 +145,7 @@ export function parseJSONRobust(response: string): any {
       }
     },
     
-    // Strategy 2: Repair common issues
+    // Strategy 2: Repair common issues (including double colons)
     (str: string) => {
       try {
         const repaired = repairJSON(str);
@@ -151,10 +155,22 @@ export function parseJSONRobust(response: string): any {
       }
     },
     
-    // Strategy 3: Fix trailing commas more aggressively (multiple passes)
+    // Strategy 2b: Fix double colons first, then repair
     (str: string) => {
       try {
-        let fixed = str;
+        // Fix double colons BEFORE other repairs
+        let fixed = str.replace(/::/g, ':');
+        const repaired = repairJSON(fixed);
+        return JSON.parse(repaired);
+      } catch (e) {
+        return null;
+      }
+    },
+    
+    // Strategy 3: Fix trailing commas more aggressively (multiple passes) + double colons
+    (str: string) => {
+      try {
+        let fixed = str.replace(/::/g, ':'); // Fix double colons first
         // Multiple passes to catch all trailing commas
         for (let i = 0; i < 5; i++) {
           fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
@@ -168,10 +184,10 @@ export function parseJSONRobust(response: string): any {
       }
     },
     
-    // Strategy 4: Aggressive trailing comma removal (array-specific)
+    // Strategy 4: Aggressive trailing comma removal (array-specific) + double colons
     (str: string) => {
       try {
-        let fixed = str;
+        let fixed = str.replace(/::/g, ':'); // Fix double colons first
         // Remove trailing commas (multiple passes, up to 10)
         for (let i = 0; i < 10; i++) {
           fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
@@ -183,11 +199,11 @@ export function parseJSONRobust(response: string): any {
       }
     },
     
-    // Strategy 5: Last resort - try to extract and fix just the problematic array
+    // Strategy 5: Last resort - try to extract and fix just the problematic array + double colons
     (str: string) => {
       try {
         // This is a more complex repair - try to identify and fix array issues
-        let fixed = str;
+        let fixed = str.replace(/::/g, ':'); // Fix double colons first
         // Remove all trailing commas aggressively
         let previous = '';
         for (let i = 0; i < 20 && fixed !== previous; i++) {

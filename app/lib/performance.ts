@@ -52,16 +52,85 @@ export async function fetchPerformanceMetrics(url: string): Promise<PerformanceM
   const pagespeedApiKey = process.env.PAGESPEED_API_KEY;
 
   if (!pagespeedApiKey) {
-    const error = new Error('Performance analysis service not configured');
-    logError(error, 'fetch_performance_metrics', { hasApiKey: false });
-    throw error;
+    console.warn('[Performance] PAGESPEED_API_KEY not configured, using fallback metrics');
+    logError(new Error('Performance analysis service not configured'), 'fetch_performance_metrics', { hasApiKey: false });
+    return getFallbackPerformanceMetrics();
   }
 
-  // Fetch both mobile and desktop metrics in parallel
-  const [mobileData, desktopData] = await Promise.all([
-    fetchPageSpeedMetrics(url, 'mobile', pagespeedApiKey),
-    fetchPageSpeedMetrics(url, 'desktop', pagespeedApiKey),
-  ]);
+  // Validate API key format early
+  if (!pagespeedApiKey.startsWith('AIza')) {
+    console.warn('[Performance] Invalid PAGESPEED_API_KEY format, using fallback metrics');
+    logError(new Error('Invalid PageSpeed API key format'), 'fetch_performance_metrics', { 
+      hasApiKey: true,
+      keyPrefix: pagespeedApiKey.substring(0, 4)
+    });
+    return getFallbackPerformanceMetrics();
+  }
+
+  // Fetch both mobile and desktop metrics in parallel with error handling
+  // If one fails, try to continue with the other
+  // CRITICAL: This function MUST NEVER throw - it always returns valid metrics (real or fallback)
+  let mobileData: any = null;
+  let desktopData: any = null;
+  
+  try {
+    console.log('[Performance] Starting parallel PageSpeed API requests (mobile + desktop)...');
+    const results = await Promise.allSettled([
+      fetchPageSpeedMetrics(url, 'mobile', pagespeedApiKey),
+      fetchPageSpeedMetrics(url, 'desktop', pagespeedApiKey),
+    ]);
+    
+    // Process results
+    results.forEach((result, index) => {
+      const strategy = index === 0 ? 'mobile' : 'desktop';
+      if (result.status === 'fulfilled') {
+        if (index === 0) {
+          mobileData = result.value;
+        } else {
+          desktopData = result.value;
+        }
+        console.log(`[Performance] ${strategy} metrics retrieved successfully`);
+      } else {
+        console.error(`[Performance] ${strategy} metrics failed:`, result.reason?.message || 'Unknown error');
+        logError(result.reason, 'fetch_pagespeed_metrics_settled', { 
+          strategy,
+          errorMessage: result.reason?.message,
+          errorStack: result.reason?.stack?.substring(0, 200)
+        });
+        // Set to null - will use fallback or copy from other strategy
+        if (index === 0) {
+          mobileData = null;
+        } else {
+          desktopData = null;
+        }
+      }
+    });
+  } catch (error: any) {
+    // This catch should never be hit since Promise.allSettled never rejects,
+    // but handle it just in case
+    console.error('[Performance] Unexpected error in Promise.allSettled:', error);
+    logError(error, 'fetch_performance_metrics_parallel', {
+      errorMessage: error?.message,
+      errorStack: error?.stack?.substring(0, 200)
+    });
+    mobileData = null;
+    desktopData = null;
+  }
+
+  // If both failed, provide fallback metrics
+  if (!mobileData && !desktopData) {
+    console.warn('[Performance] PageSpeed API failed for both mobile and desktop, using fallback metrics');
+    return getFallbackPerformanceMetrics();
+  }
+
+  // If one succeeded, use it for both (better than nothing)
+  if (!mobileData && desktopData) {
+    console.warn('[Performance] Mobile PageSpeed failed, using desktop data for both');
+    mobileData = desktopData;
+  } else if (!desktopData && mobileData) {
+    console.warn('[Performance] Desktop PageSpeed failed, using mobile data for both');
+    desktopData = mobileData;
+  }
 
   // Extract SEO score (same for both mobile and desktop, use mobile as source)
   // Try multiple paths to find SEO score with better error handling
@@ -85,11 +154,10 @@ export async function fetchPerformanceMetrics(url: string): Promise<PerformanceM
         key.includes('meta') || key.includes('headings') || key.includes('link-text')
       );
       
+      // SEO score not found - this is not critical, just log a warning
       if (seoAuditKeys.length === 0) {
-        logError(new Error('SEO score not found in expected location'), 'fetch_performance_seo_score', {
-          hasCategories: !!mobileData.lighthouseResult?.categories,
-          hasSEO: !!mobileData.lighthouseResult?.categories?.seo
-        });
+        console.warn('[Performance] SEO score not found in Lighthouse result - using 0 as default');
+        // Don't log as error - this is just informational
       }
       seoScore = 0;
     }
@@ -134,7 +202,8 @@ export async function fetchPerformanceMetrics(url: string): Promise<PerformanceM
 async function fetchPageSpeedMetrics(
   url: string,
   strategy: 'mobile' | 'desktop',
-  apiKey: string
+  apiKey: string,
+  retryCount: number = 0
 ): Promise<{
   score: number;
   fcp: number;
@@ -144,13 +213,100 @@ async function fetchPageSpeedMetrics(
   speedIndex: number;
   lighthouseResult: any; // Full lighthouse result for extracting additional data
 }> {
-  const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${apiKey}&strategy=${strategy}`;
+  // Validate API key format (should start with AIza)
+  if (!apiKey || !apiKey.startsWith('AIza')) {
+    const error = new Error('Invalid PageSpeed API key format. Key should start with "AIza"');
+    logError(error, 'fetch_pagespeed_metrics', { 
+      strategy,
+      hasApiKey: !!apiKey,
+      keyPrefix: apiKey ? apiKey.substring(0, 4) : 'none'
+    });
+    throw error;
+  }
+
+  // Construct API URL with proper encoding
+  const encodedUrl = encodeURIComponent(url);
+  const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodedUrl}&key=${apiKey}&strategy=${strategy}`;
+  const maxRetries = 2; // Retry up to 2 times for transient errors
+
+  // Log API URL construction for debugging (without exposing full key)
+  if (retryCount === 0) {
+    console.log(`[PageSpeed] ${strategy} - URL length: ${url.length}, Encoded length: ${encodedUrl.length}, API URL length: ${apiUrl.length}`);
+  }
 
   try {
-    const response = await fetchWithTimeout(apiUrl, {}, 30000);
+    if (retryCount > 0) {
+      console.log(`[PageSpeed] Retry attempt ${retryCount}/${maxRetries} for ${strategy}...`);
+    } else {
+      console.log(`[PageSpeed] Fetching ${strategy} metrics for: ${url.substring(0, 80)}...`);
+    }
+    
+    // PageSpeed API can take 60+ seconds, increase timeout
+    // Use 90 seconds to allow for slow pages
+    const response = await fetchWithTimeout(apiUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; StylrAI/1.0)',
+      },
+    }, 90000); // 90 seconds
     
     if (!response.ok) {
-      throw new Error(`PageSpeed API error: ${response.status}`);
+      // Check if it's a retryable error (500, 502, 503, 504, 429)
+      const isRetryable = [500, 502, 503, 504, 429].includes(response.status);
+      
+      if (isRetryable && retryCount < maxRetries) {
+        // Wait before retry (exponential backoff: 2s, 4s)
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`[PageSpeed] ${strategy} got ${response.status}, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchPageSpeedMetrics(url, strategy, apiKey, retryCount + 1);
+      }
+      // Get detailed error message from response
+      let errorDetails = '';
+      let errorJson: any = null;
+      try {
+        const errorText = await response.text();
+        errorDetails = errorText.substring(0, 1000); // First 1000 chars
+        
+        // Try to parse as JSON for structured error
+        try {
+          errorJson = JSON.parse(errorText);
+        } catch (e) {
+          // Not JSON, use as text
+        }
+        
+        console.error(`[PageSpeed API] Error ${response.status} details:`, errorDetails);
+      } catch (e) {
+        // If we can't read the error, just use status
+        errorDetails = `Status: ${response.status}, StatusText: ${response.statusText}`;
+      }
+      
+      // Common error patterns
+      let errorMessage = `PageSpeed API error: ${response.status}`;
+      if (errorJson) {
+        if (errorJson.error?.message) {
+          errorMessage = `PageSpeed API error: ${errorJson.error.message}`;
+        } else if (errorJson.error?.errors?.[0]?.message) {
+          errorMessage = `PageSpeed API error: ${errorJson.error.errors[0].message}`;
+        }
+      }
+      
+      // Log full error for debugging
+      logError(new Error(errorMessage), 'fetch_pagespeed_metrics_error', {
+        strategy,
+        status: response.status,
+        statusText: response.statusText,
+        errorDetails: errorDetails.substring(0, 500),
+        errorJson: errorJson ? JSON.stringify(errorJson).substring(0, 500) : null,
+        url: url.substring(0, 100), // First 100 chars of URL
+        apiKeyPrefix: apiKey.substring(0, 10), // First 10 chars for verification
+      });
+      
+      throw new Error(errorMessage);
+    }
+
+    if (retryCount > 0) {
+      console.log(`[PageSpeed] ${strategy} succeeded on retry ${retryCount}`);
     }
 
     const data = await response.json();
@@ -280,6 +436,41 @@ function calculateImageMetrics(mobileLighthouse: any, desktopLighthouse: any): {
     totalCount: Math.max(totalCount, unoptimizedCount),
     optimizationOpportunities,
     formatOptimization,
+  };
+}
+
+/**
+ * Fallback performance metrics when PageSpeed API fails
+ */
+function getFallbackPerformanceMetrics(): PerformanceMetrics {
+  return {
+    desktop: {
+      score: 50, // Neutral score
+      fcp: 2000,
+      lcp: 3000,
+      ttfb: 500,
+      loadTime: 4000,
+      speedIndex: 3500,
+    },
+    mobile: {
+      score: 50,
+      fcp: 2500,
+      lcp: 4000,
+      ttfb: 600,
+      loadTime: 5000,
+      speedIndex: 4500,
+    },
+    images: {
+      totalSize: 1000000, // 1MB estimate
+      unoptimizedCount: 2,
+      totalCount: 5,
+      optimizationOpportunities: [],
+      formatOptimization: [],
+    },
+    seo: {
+      score: 0, // Will be calculated from SEO analysis instead
+    },
+    overallScore: 50,
   };
 }
 

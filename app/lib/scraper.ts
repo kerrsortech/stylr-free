@@ -69,15 +69,23 @@ export async function scrapeProductPage(url: string): Promise<ScrapedProductData
       technicalSEO, // Include full technical SEO data for reference
     };
     
-    // Validate data quality
+    // Validate data quality - log warnings but don't fail
+    // Some products may legitimately have empty descriptions (e.g., Amazon products with minimal info)
     if (mergedData.description.length === 0) {
+      console.warn('[Scraper] Description is empty - continuing with analysis');
       logError(new Error('Description is empty'), 'scrape_product_validation', {
         hasTitle: !!mergedData.title,
         hasMetaTitle: !!mergedData.metaTitle,
         hasFeatures: mergedData.features.length > 0,
         extractedDataKeys: Object.keys(extractedData)
       });
+      // Use meta description as fallback if available
+      if (mergedData.metaDescription && mergedData.metaDescription.length > 0) {
+        mergedData.description = mergedData.metaDescription;
+        console.log('[Scraper] Using meta description as fallback for description');
+      }
     } else if (mergedData.description.length < 200) {
+      console.warn(`[Scraper] Description is very short (${mergedData.description.length} chars) - continuing with analysis`);
       logError(new Error('Description is very short'), 'scrape_product_validation', {
         descriptionLength: mergedData.description.length
       });

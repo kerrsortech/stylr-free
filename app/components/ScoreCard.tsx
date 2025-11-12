@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
-import { getScoreColor, getScoreLabel } from '@/app/lib/utils';
+import { getScoreColor, getScoreLabel, getScoreBgColor } from '@/app/lib/utils';
 
 interface ScoreCardProps {
   score: number;
@@ -20,6 +20,14 @@ interface ScoreCardProps {
 export function ScoreCard({ score, label, breakdown, percentile }: ScoreCardProps) {
   const color = getScoreColor(score);
   const scoreLabel = getScoreLabel(score);
+  
+  // Helper to get progress bar color based on score (vibrant colors)
+  const getProgressColor = (value: number) => {
+    if (value >= 80) return 'bg-green-500';
+    if (value >= 60) return 'bg-yellow-500';
+    if (value >= 30) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
 
   return (
     <Card className="mb-6">
@@ -82,28 +90,48 @@ export function ScoreCard({ score, label, breakdown, percentile }: ScoreCardProp
                   <span>Content Quality</span>
                   <span className="font-medium">{breakdown.content}/100</span>
                 </div>
-                <Progress value={breakdown.content} className="h-2" />
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className={`h-full transition-all ${getProgressColor(breakdown.content)}`}
+                    style={{ width: `${breakdown.content}%` }}
+                  />
+                </div>
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span>SEO Health</span>
                   <span className="font-medium">{breakdown.seo}/100</span>
                 </div>
-                <Progress value={breakdown.seo} className="h-2" />
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className={`h-full transition-all ${getProgressColor(breakdown.seo)}`}
+                    style={{ width: `${breakdown.seo}%` }}
+                  />
+                </div>
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span>Performance</span>
                   <span className="font-medium">{breakdown.performance}/100</span>
                 </div>
-                <Progress value={breakdown.performance} className="h-2" />
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className={`h-full transition-all ${getProgressColor(breakdown.performance)}`}
+                    style={{ width: `${breakdown.performance}%` }}
+                  />
+                </div>
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span>Mobile Optimized</span>
                   <span className="font-medium">{breakdown.mobile}/100</span>
                 </div>
-                <Progress value={breakdown.mobile} className="h-2" />
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className={`h-full transition-all ${getProgressColor(breakdown.mobile)}`}
+                    style={{ width: `${breakdown.mobile}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>

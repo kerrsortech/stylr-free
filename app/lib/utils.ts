@@ -23,16 +23,16 @@ export function isValidProductURL(url: string): boolean {
 }
 
 export function getScoreColor(score: number): string {
-  if (score >= 90) return 'text-green-600';
-  if (score >= 75) return 'text-yellow-600';
-  if (score >= 50) return 'text-orange-600';
-  return 'text-red-600';
+  if (score >= 80) return 'text-green-500';
+  if (score >= 60) return 'text-yellow-500';
+  if (score >= 30) return 'text-orange-500';
+  return 'text-red-500';
 }
 
 export function getScoreBgColor(score: number): string {
-  if (score >= 90) return 'bg-green-500';
-  if (score >= 75) return 'bg-yellow-500';
-  if (score >= 50) return 'bg-orange-500';
+  if (score >= 80) return 'bg-green-500';
+  if (score >= 60) return 'bg-yellow-500';
+  if (score >= 30) return 'bg-orange-500';
   return 'bg-red-500';
 }
 

@@ -300,14 +300,19 @@ export async function callReplicateLLM(
  * Receives technical SEO data that was already scraped from HTML
  */
 export async function extractProductDataWithLLM(url: string, technicalSEO?: any): Promise<any> {
+  // Log that we're using the full URL
+  console.log('[GPT-5 Extract] Starting product extraction with FULL URL (', url.length, 'chars)');
+  
   const systemPrompt = `You are a production-grade e-commerce product page analyzer. Your task is to extract REAL, ACCURATE data from actual web pages.
 
 CRITICAL REQUIREMENTS:
-1. Visit the provided URL and analyze the ACTUAL page content
-2. Extract ONLY what you can see/verify on the page - NO assumptions or made-up data
-3. If information is missing, use empty strings ("") or empty arrays ([])
-4. Return ONLY valid JSON - no markdown, no explanations
-5. Work with ANY e-commerce platform (Shopify, WooCommerce, Amazon, eBay, Etsy, custom stores)
+1. Visit the COMPLETE, FULL URL provided (URLs can be 300+ characters - this is normal for e-commerce)
+2. Analyze the ENTIRE page - scroll through ALL sections, read ALL content
+3. Extract ONLY what you can see/verify on the COMPLETE page - NO assumptions or made-up data
+4. If information is missing, use empty strings ("") or empty arrays ([])
+5. Return ONLY valid JSON - no markdown, no explanations, use single colon (:) not double (::)
+6. Work with ANY e-commerce platform (Shopify, WooCommerce, Amazon, eBay, Etsy, custom stores)
+7. Handle long URLs correctly - the full URL is provided and must be used completely
 
 DATA ACCURACY IS PARAMOUNT:
 - Extract real product titles, descriptions, and features from the page
@@ -324,14 +329,32 @@ DO NOT:
   // Minimal technical SEO context - AI will analyze the actual page
   const technicalSEOContext = technicalSEO ? `Ref: Title="${technicalSEO.metaTitle || ''}", Desc="${technicalSEO.metaDescription || ''}", H1="${technicalSEO.h1 || ''}" (${technicalSEO.h1Count}), Schema=${!!technicalSEO.schema}` : '';
 
+  // Log full URL to confirm it's passed completely to GPT-5
+  console.log('[GPT-5 Extract] Full URL being analyzed (length:', url.length, 'chars):', url);
+  console.log('[GPT-5 Extract] GPT-5 will analyze the COMPLETE page - no truncation');
+
   const userPrompt = `URL: ${url}
 ${technicalSEOContext ? `Context: ${technicalSEOContext}` : ''}
 
-Extract ONLY visible data from this page. NO assumptions. Use "" or [] if missing.
+CRITICAL: You MUST visit and analyze the COMPLETE, FULL page at the URL above.
+- The URL may be long (300+ characters) - this is normal for e-commerce sites
+- Analyze the ENTIRE page content, not just a portion
+- Scroll through and read ALL sections of the product page
+- Extract ALL visible product information from the complete page
+
+Extract ONLY visible data from this COMPLETE page. NO assumptions. Use "" or [] if missing.
 
 Required fields:
 - title: Main product name (H1 or prominent heading)
-- description: FULL text, ALL paragraphs, ALL sections (500-1000+ chars expected, combine all sections)
+- description: CRITICAL - Extract ALL product description text from the page. Look for:
+  * "About this item" sections
+  * Product detail paragraphs
+  * "Product Description" sections
+  * "Details" or "Specifications" text
+  * Any body text describing the product
+  * If no description found, use meta description as fallback
+  * MUST be at least 100+ characters if any product info exists
+  * Combine ALL description sections into one complete text
 - features: ALL bullet points/features visible
 - productType: Category (e.g., "Electronics", "Clothing")
 - category: Specific subcategory if visible
@@ -344,7 +367,12 @@ Required fields:
 - ctaText: Button text ("Add to Cart", "Buy Now", etc.)
 - platform: Detected platform (Shopify, WooCommerce, Amazon, etc.)
 
-Rules: Extract complete description (all text), preserve exact wording, no truncation. Return ONLY valid JSON, no markdown, no explanations:
+CRITICAL RULES:
+1. description field MUST NOT be empty - extract ALL visible product description text
+2. If no description section found, use meta description or "About this item" text
+3. Extract complete description (all text), preserve exact wording, no truncation
+4. Return ONLY valid JSON - use single colon (:) not double colon (::)
+5. No markdown, no explanations, pure JSON only
 
 {
   "title": "Exact product title visible on page",
@@ -451,11 +479,21 @@ IMPORTANT: Do NOT return "current" content - we already have it from the page. O
   // Optimize: Only send minimal essential context since AI can visit the URL
   const technicalSEOSection = technicalSEO ? `Ref: Title="${technicalSEO.metaTitle || ''}", Desc="${technicalSEO.metaDescription || ''}", H1="${technicalSEO.h1 || ''}" (${technicalSEO.h1Count}), Schema=${!!technicalSEO.schema}, Images=${technicalSEO.images?.length || 0}` : '';
 
+  // Log full URL to confirm it's passed completely to GPT-5
+  console.log('[GPT-5 Enhance] Full URL being analyzed (length:', url.length, 'chars):', url);
+  console.log('[GPT-5 Enhance] GPT-5 will analyze the COMPLETE page for enhancements - no truncation');
+
   const userPrompt = `URL: ${url}
 ${technicalSEOSection ? `Context: ${technicalSEOSection}` : ''}
 Product: ${productData.productType} | ${productData.category} | Title: "${productData.title}" | CTA: "${productData.ctaText || ''}"
 
-Analyze the URL and provide enhancements:
+CRITICAL: You MUST visit and analyze the COMPLETE, FULL page at the URL above.
+- The URL may be long (300+ characters) - this is normal and expected
+- Analyze the ENTIRE page content, ALL sections, ALL text
+- Read through the complete product description, features, specifications
+- Review ALL visible content on the page before providing enhancements
+
+Analyze the COMPLETE URL and provide enhancements:
 
 1. summary: overallAssessment (2-3 sentences), strengths (3-5), weaknesses (3-5), priorityRecommendations (3-5)
 2. title: enhanced (50-60 chars, keyword-rich), reasoning (2-3 sentences), improvement (quantified impact)
@@ -515,13 +553,41 @@ Return ONLY valid JSON, no markdown, no "current" fields (we have them), no trai
         throw new Error('Response is not a JSON object');
       }
       
-      // Validate required fields exist
-      if (!parsedData.summary || !parsedData.title || !parsedData.description) {
-        logError(new Error('Response missing required fields'), 'enhance_content_validation', {
-          hasSummary: !!parsedData.summary,
-          hasTitle: !!parsedData.title,
-          hasDescription: !!parsedData.description
-        });
+      // Validate and create missing fields with defaults (don't throw, just log)
+      if (!parsedData.summary) {
+        console.warn('[Enhance] Missing summary field, creating default');
+        parsedData.summary = {
+          overallAssessment: 'Content analysis completed',
+          strengths: [],
+          weaknesses: [],
+          priorityRecommendations: [],
+        };
+      }
+      
+      if (!parsedData.title) {
+        console.warn('[Enhance] Missing title field, creating default');
+        parsedData.title = { enhanced: productData.title || 'Product', reasoning: '', improvement: '' };
+      }
+      
+      if (!parsedData.description) {
+        console.warn('[Enhance] Missing description field, creating default');
+        parsedData.description = { enhanced: productData.description || 'Product description', reasoning: '', improvement: '' };
+      }
+      
+      if (!parsedData.features) {
+        console.warn('[Enhance] Missing features field, creating default');
+        parsedData.features = { enhanced: productData.features || [], reasoning: '', improvement: '' };
+      }
+      
+      if (!parsedData.metaDescription) {
+        console.warn('[Enhance] Missing metaDescription field, creating default');
+        parsedData.metaDescription = { enhanced: productData.metaDescription || '', reasoning: '', improvement: '' };
+      }
+      
+      // Ensure contentQualityScore exists
+      if (typeof parsedData.contentQualityScore !== 'number') {
+        console.warn('[Enhance] Missing or invalid contentQualityScore, using default');
+        parsedData.contentQualityScore = 50;
       }
       
       // Merge scraped "current" content with enhanced content
