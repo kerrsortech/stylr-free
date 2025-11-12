@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidProductURL } from '@/app/lib/utils';
-import { scrapeProductPage } from '@/app/lib/scraper';
+import { scrapeTechnicalSEO } from '@/app/lib/html-scraper';
 import { analyzeSEO } from '@/app/lib/seo-analyzer';
 import { fetchPerformanceMetrics } from '@/app/lib/performance';
 import { enhanceContentWithLLM } from '@/app/lib/replicate';
@@ -30,20 +30,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Extract product data using LLM
-    // CRITICAL: Even if scraping fails, we can still run PageSpeed API and content enhancement
-    // GPT-5 has the URL and can extract directly, PageSpeed only needs URL
+    // 2. Scrape technical SEO data from HTML (meta tags, H1, images, schema, etc.)
+    // Content enhancement will analyze the URL directly - no product extraction needed
+    let technicalSEO;
     let scrapedData;
     try {
-      console.log('[API] Starting product extraction...');
-      scrapedData = await scrapeProductPage(url);
-      console.log('[API] Product extraction completed');
+      console.log('[API] Starting technical SEO scraping...');
+      technicalSEO = await scrapeTechnicalSEO(url);
+      console.log('[API] Technical SEO scraping completed');
+      
+      // Create minimal scrapedData structure for compatibility with existing code
+      scrapedData = {
+        title: technicalSEO.h1 || 'Product',
+        description: '',
+        metaTitle: technicalSEO.metaTitle || '',
+        metaDescription: technicalSEO.metaDescription || '',
+        h1: technicalSEO.h1 || 'Product',
+        h1Count: technicalSEO.h1Count || 1,
+        features: [],
+        images: technicalSEO.images || [],
+        price: '',
+        schema: technicalSEO.schema,
+        url,
+        productType: 'Product',
+        category: '',
+        ctaText: 'Add to Cart',
+        brand: '',
+        sku: '',
+        availability: 'In Stock',
+        technicalSEO,
+      };
     } catch (error: any) {
       // Log error but don't fail - use minimal fallback data
-      console.warn('[API] ⚠️ Product extraction failed, using minimal fallback data:', error.message);
-      logError(error, 'product_extraction_fallback', { url });
+      console.warn('[API] ⚠️ Technical SEO scraping failed, using minimal fallback data:', error.message);
+      logError(error, 'technical_seo_scraping_fallback', { url });
       
-      // Create minimal scrapedData fallback - GPT-5 and PageSpeed can still work
+      // Create minimal scrapedData fallback
+      technicalSEO = {
+        metaTitle: '',
+        metaDescription: '',
+        h1: 'Product',
+        h1Count: 1,
+        h2Tags: [],
+        images: [],
+        schema: null,
+        canonicalUrl: url,
+        ogTags: { title: '', description: '', image: '' },
+        twitterTags: { title: '', description: '', image: '' },
+        breadcrumbs: [],
+        hasCanonical: false,
+        urlStructure: url,
+      };
+      
       scrapedData = {
         title: 'Product',
         description: '',
@@ -62,23 +100,9 @@ export async function POST(request: NextRequest) {
         brand: '',
         sku: '',
         availability: 'In Stock',
-        technicalSEO: {
-          metaTitle: '',
-          metaDescription: '',
-          h1: 'Product',
-          h1Count: 1,
-          h2Tags: [],
-          images: [],
-          schema: null,
-          canonicalUrl: url,
-          ogTags: { title: '', description: '', image: '' },
-          twitterTags: { title: '', description: '', image: '' },
-          breadcrumbs: [],
-          hasCanonical: false,
-          urlStructure: url,
-        },
+        technicalSEO,
       };
-      console.log('[API] Using minimal fallback data - PageSpeed and GPT-5 will still work');
+      console.log('[API] Using minimal fallback data - PageSpeed and content enhancement will still work');
     }
 
     // 3. Run ALL independent analyses in parallel for maximum speed
@@ -104,8 +128,8 @@ export async function POST(request: NextRequest) {
       // This will NEVER cause a 500 error - it's bulletproof
       fetchPerformanceMetrics(url),
       
-      // 3. Content Enhancement (GPT-5 - needs scrapedData but has URL as fallback)
-      // GPT-5 can extract from URL directly if scrapedData is incomplete
+      // 3. Content Enhancement (GPT-5 - analyzes URL directly, no product extraction needed)
+      // GPT-5 will visit the URL and provide summary and enhancements
       enhanceContentWithLLM({
         title: scrapedData.title,
         description: scrapedData.description,

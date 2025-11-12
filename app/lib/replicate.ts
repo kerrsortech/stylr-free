@@ -295,133 +295,6 @@ export async function callReplicateLLM(
 }
 
 /**
- * Extract product data from URL using AI
- * Optimized prompt to analyze any e-commerce product page
- * Receives technical SEO data that was already scraped from HTML
- */
-export async function extractProductDataWithLLM(url: string, technicalSEO?: any): Promise<any> {
-  // Log that we're using the full URL
-  console.log('[GPT-5 Extract] Starting product extraction with FULL URL (', url.length, 'chars)');
-  
-  const systemPrompt = `You are a production-grade e-commerce product page analyzer. Your task is to extract REAL, ACCURATE data from actual web pages.
-
-CRITICAL REQUIREMENTS:
-1. Visit the COMPLETE, FULL URL provided (URLs can be 300+ characters - this is normal for e-commerce)
-2. Analyze the ENTIRE page - scroll through ALL sections, read ALL content
-3. Extract ONLY what you can see/verify on the COMPLETE page - NO assumptions or made-up data
-4. If information is missing, use empty strings ("") or empty arrays ([])
-5. Return ONLY valid JSON - no markdown, no explanations, use single colon (:) not double (::)
-6. Work with ANY e-commerce platform (Shopify, WooCommerce, Amazon, eBay, Etsy, custom stores)
-7. Handle long URLs correctly - the full URL is provided and must be used completely
-
-DATA ACCURACY IS PARAMOUNT:
-- Extract real product titles, descriptions, and features from the page
-- Identify actual pricing, availability, and product specifications
-- Detect the real e-commerce platform being used
-- Return structured JSON that can be directly used for analysis
-
-DO NOT:
-- Make up or infer data that isn't visible
-- Use placeholder text or generic examples
-- Assume product details without seeing them
-- Return incomplete or fake data`;
-
-  // Minimal technical SEO context - AI will analyze the actual page
-  const technicalSEOContext = technicalSEO ? `Ref: Title="${technicalSEO.metaTitle || ''}", Desc="${technicalSEO.metaDescription || ''}", H1="${technicalSEO.h1 || ''}" (${technicalSEO.h1Count}), Schema=${!!technicalSEO.schema}` : '';
-
-  // Log full URL to confirm it's passed completely to GPT-5
-  console.log('[GPT-5 Extract] Full URL being analyzed (length:', url.length, 'chars):', url);
-  console.log('[GPT-5 Extract] GPT-5 will analyze the COMPLETE page - no truncation');
-
-  const userPrompt = `URL: ${url}
-${technicalSEOContext ? `Context: ${technicalSEOContext}` : ''}
-
-CRITICAL: You MUST visit and analyze the COMPLETE, FULL page at the URL above.
-- The URL may be long (300+ characters) - this is normal for e-commerce sites
-- Analyze the ENTIRE page content, not just a portion
-- Scroll through and read ALL sections of the product page
-- Extract ALL visible product information from the complete page
-
-Extract ONLY visible data from this COMPLETE page. NO assumptions. Use "" or [] if missing.
-
-Required fields:
-- title: Main product name (H1 or prominent heading)
-- description: CRITICAL - Extract ALL product description text from the page. Look for:
-  * "About this item" sections
-  * Product detail paragraphs
-  * "Product Description" sections
-  * "Details" or "Specifications" text
-  * Any body text describing the product
-  * If no description found, use meta description as fallback
-  * MUST be at least 100+ characters if any product info exists
-  * Combine ALL description sections into one complete text
-- features: ALL bullet points/features visible
-- productType: Category (e.g., "Electronics", "Clothing")
-- category: Specific subcategory if visible
-- brand: Brand name if visible, else ""
-- sku: Product ID if visible, else ""
-- price: Exact format as shown
-- originalPrice: If on sale, else ""
-- currency: Code if visible (USD, EUR), else ""
-- availability: Exact text ("In Stock", "Out of Stock", etc.)
-- ctaText: Button text ("Add to Cart", "Buy Now", etc.)
-- platform: Detected platform (Shopify, WooCommerce, Amazon, etc.)
-
-CRITICAL RULES:
-1. description field MUST NOT be empty - extract ALL visible product description text
-2. If no description section found, use meta description or "About this item" text
-3. Extract complete description (all text), preserve exact wording, no truncation
-4. Return ONLY valid JSON - use single colon (:) not double colon (::)
-5. No markdown, no explanations, pure JSON only
-
-{
-  "title": "Exact product title visible on page",
-  "description": "FULL product description - ALL paragraphs, ALL sections, COMPLETE text (NOT truncated, NOT summarized - extract EVERYTHING visible about the product, typically 500-1000+ characters)",
-  "features": ["Feature 1 from page", "Feature 2 from page", "Feature 3 from page"],
-  "productType": "Product type/category visible on page",
-  "category": "Specific category if visible",
-  "brand": "Brand name if visible, else empty string",
-  "sku": "SKU/Product ID if visible, else empty string",
-  "price": "Exact price format as shown on page",
-  "originalPrice": "Original price if on sale, else empty string",
-  "currency": "Currency code if visible (USD, EUR, etc.), else empty string",
-  "availability": "Exact availability text from page (In Stock, Out of Stock, etc.)",
-  "ctaText": "Exact button text for purchase action",
-  "platform": "Detected e-commerce platform name"
-}`;
-
-  try {
-    const response = await callReplicateLLM(userPrompt, systemPrompt, {
-      maxTokens: 4000,
-      temperature: 0.2,
-      jsonMode: true,
-    });
-
-    // Parse JSON response with robust error handling
-    let parsedData;
-    try {
-      parsedData = parseJSONRobust(response);
-      
-      // Validate that we got an object (not array or primitive)
-      if (typeof parsedData !== 'object' || parsedData === null || Array.isArray(parsedData)) {
-        throw new Error('Response is not a JSON object');
-      }
-    } catch (parseError: any) {
-      logError(parseError, 'extract_product_data_parse', { 
-        responseLength: response.length,
-        responsePreview: response.substring(0, 500)
-      });
-      throw new Error(`Invalid data format from AI service: ${parseError.message}`);
-    }
-
-    return parsedData;
-  } catch (error: any) {
-    logError(error, 'extract_product_data');
-    throw new Error(`Product extraction failed: ${error.message}`);
-  }
-}
-
-/**
  * Enhance product content using AI
  * Optimized prompt to provide detailed enhancements with reasoning
  */
@@ -471,17 +344,17 @@ ENHANCEMENT APPROACH:
 
 For EVERY enhancement, provide ONLY:
 - Enhanced content: Optimized version ready for production use
-- Reasoning: A descriptive explanation (4-6 sentences) that combines:
-  1. Simple, humane explanation (2-3 sentences): Write in easy-to-understand, conversational language that anyone can grasp. Explain WHY this works in intuitive terms, using relatable examples. Make it feel like friendly advice.
-  2. Technical SEO explanation (1-2 sentences): Include technical details about how this improves SEO - mention specific SEO factors like keyword optimization, search intent alignment, semantic relevance, keyword placement, search engine algorithms, ranking signals, or other relevant SEO parameters. Explain the technical SEO impact in clear terms.
+- Reasoning: A concise explanation (2-3 lines maximum) that clearly communicates:
+  1. First line: How the writing is better - explain why this enhanced content is clearer, easier to understand, or more effective for users. Be specific about what makes it better based on the actual content you wrote.
+  2. Second line: SEO improvement - directly state how this improves SEO (keyword optimization, search intent alignment, semantic relevance, ranking signals, etc.). Don't say "from an SEO perspective" - just state the SEO benefits directly.
 - Improvement: Quantified impact (e.g., "+35% CTR potential", "+28% keyword coverage")
 
 CRITICAL REASONING REQUIREMENTS:
-- Write in a balanced way: Start with simple, conversational explanation, then add technical SEO details
-- Make the simple part relatable and easy to understand (more customers, better visibility, etc.)
-- Include technical SEO aspects: keyword optimization, search intent, semantic relevance, ranking signals, search algorithms
-- Be descriptive (4-6 sentences total) - not too short, but comprehensive
-- Explain both the "why it works" (simple) and "how it helps SEO" (technical)
+- Keep it concise: Maximum 2-3 lines total (not a chunky paragraph)
+- Be clear and humane: Use simple, easy-to-understand language
+- Be specific: Base reasoning on the actual enhanced content you wrote, not generic statements
+- Structure: First line = writing improvement (user-focused), Second line = SEO improvement (direct SEO points)
+- Explain why: Clearly communicate why this specific content is better than the original
 
 IMPORTANT: Do NOT return "current" content - we already have it from the page. Only return enhanced, reasoning, and improvement.`;
 
@@ -505,19 +378,19 @@ CRITICAL: You MUST visit and analyze the COMPLETE, FULL page at the URL above.
 Analyze the COMPLETE URL and provide enhancements:
 
 1. summary: overallAssessment (2-3 sentences), strengths (3-5), weaknesses (3-5), priorityRecommendations (3-5)
-2. title: enhanced (50-60 chars, keyword-rich), reasoning (4-6 sentences: 2-3 simple explanations + 1-2 technical SEO details), improvement (quantified impact)
-3. metaDescription: enhanced (150-160 chars, CTA+benefits), reasoning (4-6 sentences: 2-3 simple explanations + 1-2 technical SEO details), improvement (quantified)
-4. description: enhanced (200-300 words, benefit-focused, SEO-optimized), reasoning (5-7 sentences: 3-4 simple explanations + 1-2 technical SEO details), improvement (quantified)
-5. features: enhanced (5-7 items, benefit-focused, trust signals), reasoning (4-6 sentences: 2-3 simple explanations + 1-2 technical SEO details), improvement (quantified)
+2. title: enhanced (50-60 chars, keyword-rich), reasoning (2-3 lines: first line = writing improvement, second line = SEO improvement), improvement (quantified impact)
+3. metaDescription: enhanced (150-160 chars, CTA+benefits), reasoning (2-3 lines: first line = writing improvement, second line = SEO improvement), improvement (quantified)
+4. description: enhanced (200-300 words, benefit-focused, SEO-optimized), reasoning (2-3 lines: first line = writing improvement, second line = SEO improvement), improvement (quantified)
+5. features: enhanced (5-7 items, benefit-focused, trust signals), reasoning (2-3 lines: first line = writing improvement, second line = SEO improvement), improvement (quantified)
 6. contentQualityScore: 0-100 (SEO, conversion, UX, completeness, trust)
 
 REASONING WRITING STYLE - CRITICAL:
-- Write descriptive reasoning (4-6 sentences for most sections, 5-7 for description)
-- Structure: Start with simple, conversational explanation (2-3 sentences), then add technical SEO details (1-2 sentences)
-- Simple part: Use warm, easy-to-understand language, relatable examples, explain benefits in terms users understand (more customers, better visibility, easier to find)
-- Technical part: Include specific SEO factors - keyword optimization, search intent alignment, semantic relevance, keyword placement, ranking signals, search algorithms, keyword density, meta tag optimization, or other relevant SEO parameters
-- Balance both aspects: Make it accessible but also show the technical SEO value
-- Be descriptive and comprehensive - explain both "why it works" (simple) and "how it improves SEO" (technical)
+- Keep it concise: Maximum 2-3 lines total (not a chunky paragraph)
+- Structure: First line explains how the writing is better (clearer, easier to understand, more effective for users). Second line states SEO improvements directly (keyword optimization, search intent, semantic relevance, ranking signals, etc.)
+- Be specific: Base reasoning on the actual enhanced content you wrote - explain why THIS specific content is better, not generic statements
+- Be clear and humane: Use simple, easy-to-understand language that anyone can grasp
+- Don't use phrases like "from an SEO perspective" - just state SEO benefits directly
+- Explain why: Clearly communicate why this specific enhanced content is better than the original
 
 Principles: SEO (keywords, search intent, rich results), Conversion (benefits>features, trust signals, urgency), UX (scannable, clear, accessible).
 
@@ -532,22 +405,22 @@ Return ONLY valid JSON, no markdown, no "current" fields (we have them), no trai
   },
   "title": {
     "enhanced": "Optimized title (50-60 chars)",
-    "reasoning": "Descriptive explanation with simple and technical SEO details",
+    "reasoning": "Concise 2-3 line explanation: first line = writing improvement, second line = SEO improvement",
     "improvement": "+X% keyword coverage, +Y% CTR potential"
   },
   "metaDescription": {
     "enhanced": "Optimized meta description (150-160 chars)",
-    "reasoning": "Descriptive explanation with simple and technical SEO details",
+    "reasoning": "Concise 2-3 line explanation: first line = writing improvement, second line = SEO improvement",
     "improvement": "+X% CTR from search results"
   },
   "description": {
     "enhanced": "Rewritten optimized description (200-300 words with subheadings)",
-    "reasoning": "Descriptive explanation with simple and technical SEO details",
+    "reasoning": "Concise 2-3 line explanation: first line = writing improvement, second line = SEO improvement",
     "improvement": "+X% engagement, +Y% conversion, +Z% SEO value"
   },
   "features": {
     "enhanced": ["Enhanced feature 1 with benefit", "Enhanced feature 2 with trust signal", "New feature 3"],
-    "reasoning": "Descriptive explanation with simple and technical SEO details",
+    "reasoning": "Concise 2-3 line explanation: first line = writing improvement, second line = SEO improvement",
     "improvement": "+X% conversion rate, +Y% trust signals"
   },
   "contentQualityScore": 85
