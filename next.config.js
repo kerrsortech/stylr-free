@@ -6,6 +6,15 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/product-analyser',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

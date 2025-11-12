@@ -5,6 +5,13 @@
       "memory": 1024
     }
   },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/product-analyser",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
