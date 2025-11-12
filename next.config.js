@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  basePath: '/product-analyser',
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
